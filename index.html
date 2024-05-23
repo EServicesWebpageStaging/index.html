@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Colorado Tax Rates & Jurisdiction Codes</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.24/"></script>
+    <script>
+        var googleMapsApiKey = 'AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo'; // Replace with your actual API key
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo"></script>
+    <style>
+        html, body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: "Roboto", sans-serif;
+            background-color: #000000;
+        }
+        #viewDiv {  
+            height: 100%;
+            width: 100%;
+        }
+        .esri-popup .esri-popup__main-container {
+            border: none;
+            border-top: 3px solid #0e0a69;
+            margin: 8px 0;
+            max-height: fit-content;
+            max-width: fit-content;
+        }
+        .esri-popup .esri-popup__main-container .esri-widget {
+            font-size: 20px;
+        }
+        .esri-popup .esri-popup__main-container .jurisdiction-name,
+        .esri-popup .esri-popup__main-container .total-tax-rate,
+        .esri-popup .esri-popup__main-container .tax-rate {
+            font-size: 14px;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #header {
+            display: flex;
+            align-items: center;
+            justify-content: start;
+            color: #000000;
+            background-color: #fff;
+        }
+        #logo {
+            max-width: 300px;
+            margin: 15px;
+            height: auto;
+        }
+        #disclaimer {
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <img src="https://www.salestaxcolorado.com/wp-content/uploads/2021/01/CO-DOR-Division-of-Taxation.jpg" alt="Colorado Department of Revenue - Division of Taxation" id="logo" />
+        <div id="disclaimer">
+            Please click anywhere on the map of Colorado to display the sales tax information about that location.
+        </div>
+    </div>
+    <div id="viewDiv"></div>
+    <script>
+        // Dictionary for Jurisdictions and Codes
+        var jurisdictionCodes = {
+    "Colorado (State), Denver City and County (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "01-0006",
+    "Colorado (State), Pueblo (County), Boone (City)": "02-0006",
+    "Colorado (State), Pueblo (County), Pueblo (City)": "02-0043",
+    "Colorado (State), Pueblo (County), Pueblo (City), Pueblo PIF (District)": "02-0048",
+    "Colorado (State), Pueblo (County), Rye (City)": "02-0046",
+    "Colorado (State), Pueblo (County), Pueblo West MDT (District)": "02-0069",
+    "Colorado (State), Weld (County)": "03-0206",
+    "Colorado (State), Weld (County), Ault (City)": "03-0006",
+    "Colorado (State), Weld (County), Berthoud (City)": "03-0008",
+    "Colorado (State), Weld (County), Dacono (City)": "03-0028",
+    "Colorado (State), Weld (County), Eaton (City)": "03-0036",
+    "Colorado (State), Weld (County), Erie (City)": "03-0039",
+    "Colorado (State), Weld (County), Evans (City)": "03-0041",
+    "Colorado (State), Weld (County), Firestone (City)": "03-0043",
+    "Colorado (State), Weld (County), Fort Lupton (City)": "03-0044",
+    "Colorado (State), Weld (County), Frederick (City)": "03-0046",
+    "Colorado (State), Weld (County), Garden City (City)": "03-0050",
+    "Colorado (State), Weld (County), Gilcrest (City)": "03-0052",
+    "Colorado (State), Weld (County), Greeley (City)": "03-0057",
+    "Colorado (State), Weld (County), Grover (City)": "03-0060",
+    "Colorado (State), Weld (County), Hudson (City)": "03-0070",
+    "Colorado (State), Weld (County), Johnstown (City)": "03-0075",
+    "Colorado (State), Weld (County), Keenesburg (City)": "03-0078",
+    "Colorado (State), Weld (County), Kersey (City)": "03-0080",
+    "Colorado (State), Weld (County), Erie (City), Regional Transportation District (RTD) (District)": "03-0082",
+    "Colorado (State), Weld (County), La Salle (City)": "03-0085",
+    "Colorado (State), Weld (County), Mead (City)": "03-0095",
+    "Colorado (State), Weld (County), Milliken (City)": "03-0097",
+    "Colorado (State), Weld (County), Raymer (New Raymer) (City)": "03-0099",
+    "Colorado (State), Weld (County), Nunn (City)": "03-0100",
+    "Colorado (State), Weld (County), Pierce (City)": "03-0106",
+    "Colorado (State), Weld (County), Platteville (City)": "03-0107",
+    "Colorado (State), Weld (County), Severance (City)": "03-0112",
+    "Colorado (State), Weld (County), Windsor (City)": "03-0142",
+    "Colorado (State), Weld (County), Lochbuie (City)": "03-0500",
+    "Colorado (State), Weld (County), Brighton (City)": "03-0151",
+    "Colorado (State), Weld (County), Northglenn (City)": "03-0153",
+    "Colorado (State), Weld (County), Longmont (City), Regional Transportation District (RTD) (District)": "03-0156",
+    "Colorado (State), Weld (County), Brighton (City), Regional Transportation District (RTD) (District)": "03-0157",
+    "Colorado (State), Weld (County), Timnath (City)": "03-0158",
+    "Colorado (State), Weld (County), Lochbuie (City), Regional Transportation District (RTD) (District)": "03-0159",
+    "Colorado (State), Weld (County), Longmont (City)": "03-0160",
+    "Colorado (State), Weld (County), Regional Transportation District (RTD) (District)": "03-0209",
+    "Colorado (State), El Paso (County), Colorado Springs (City)": "04-0001",
+    "Colorado (State), El Paso (County), Calhan (City)": "04-0009",
+    "Colorado (State), El Paso (County), Colorado Springs (City), Pikes Peak RTA (District)": "04-0017",
+    "Colorado (State), El Paso (County), Colorado Springs (City), Pikes Peak RTA (District), Southwest Downtown PIF (District)": "04-0017",
+    "Colorado (State), El Paso (County), Fountain (City)": "04-0031",
+    "Colorado (State), El Paso (County), Green Mountain Falls (City), Pikes Peak RTA (District)": "04-0038",
+    "Colorado (State), El Paso (County), Manitou Springs (City), Pikes Peak RTA (District)": "04-0052",
+    "Colorado (State), El Paso (County), Monument (City)": "04-0057",
+    "Colorado (State), El Paso (County), Monument (City), Falcon Commerce Center PIF (District)": "04-0057",
+    "Colorado (State), El Paso (County), Palmer Lake (City)": "04-0059",
+    "Colorado (State), El Paso (County), Ramah (City), Pikes Peak RTA (District)": "04-0064",
+    "Colorado (State), El Paso (County), Woodland Park (City), Pikes Peak RTA (District)": "04-0097",
+    "Colorado (State), El Paso (County), Calhan (City), Pikes Peak RTA (District)": "04-0098",
+    "Colorado (State), El Paso (County), Fountain (City), Pikes Peak RTA (District)": "04-0099",
+    "Colorado (State), El Paso (County), Palmer Lake (City), Pikes Peak RTA (District)": "04-0102",
+    "Colorado (State), El Paso (County), Monument (City), Pikes Peak RTA (District)": "04-0103",
+    "Colorado (State), El Paso (County), Pikes Peak RTA (District)": "04-0206",
+    "Colorado (State), El Paso (County)": "04-0207",
+    "Colorado (State), Las Animas (County), Aguilar (City)": "05-0003",
+    "Colorado (State), Las Animas (County), Branson (City)": "05-0017",
+    "Colorado (State), Las Animas (County), Cokedale (City)": "05-0019",
+    "Colorado (State), Las Animas (County), Kim (City)": "05-0053",
+    "Colorado (State), Las Animas (County), Starkville (City)": "05-0089",
+    "Colorado (State), Las Animas (County), Trinidad (City)": "05-0102",
+    "Colorado (State), Las Animas (County)": "05-0206",
+    "Colorado (State), Larimer (County), Berthoud (City)": "06-0009",
+    "Colorado (State), Larimer (County), Estes Park Marketing District (District), Drake (District)": "06-0025",
+    "Colorado (State), Larimer (County), Estes Park (City)": "06-0027",
+    "Colorado (State), Larimer (County), Fort Collins (City)": "06-0031",
+    "Colorado (State), Larimer (County), Estes Park Marketing District (District), Glen Haven (District)": "06-0034",
+    "Colorado (State), Larimer (County), Loveland (City)": "06-0049",
+    "Colorado (State), Larimer (County), Timnath (City)": "06-0077",
+    "Colorado (State), Larimer (County), Wellington (City)": "06-0082",
+    "Colorado (State), Larimer (County), Windsor (City)": "06-0084",
+    "Colorado (State), Larimer (County), Johnstown (City)": "06-0086",
+    "Colorado (State), Larimer (County), Johnstown (City), Johnstown PIF (District)": "06-0086",
+    "Colorado (State), Larimer (County), Drake (District)": "06-0206",
+    "Colorado (State), Larimer (County), Estes Park Marketing District (District)": "06-0206",
+    "Colorado (State), Larimer (County), Glen Haven (District)": "06-0206",
+    "Colorado (State), Larimer (County)": "06-0206",
+    "Colorado (State), Boulder (County), Boulder (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0003",
+    "Colorado (State), Boulder (County), Jamestown (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0033",
+    "Colorado (State), Boulder (County), Lafayette (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0034",
+    "Colorado (State), Boulder (County), Longmont (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0040",
+    "Colorado (State), Boulder (County), Louisville (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0041",
+    "Colorado (State), Boulder (County), Lyons (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0042",
+    "Colorado (State), Boulder (County), Nederland (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0049",
+    "Colorado (State), Boulder (County), Boulder (County) LID (District), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0050",
+    "Colorado (State), Boulder (County), Superior (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0067",
+    "Colorado (State), Boulder (County), Ward (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0073",
+    "Colorado (State), Boulder (County), Erie (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0081",
+    "Colorado (State), Boulder (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "07-0206",
+    "Colorado (State), Mesa (County), Collbran (City), Mesa (County) PSI (District)": "08-0008",
+    "Colorado (State), Mesa (County), De Beque (City), Mesa (County) PSI (District)": "08-0009",
+    "Colorado (State), Mesa (County), Fruita (City), Mesa (County) PSI (District)": "08-0014",
+    "Colorado (State), Mesa (County), Grand Junction (City), Mesa (County) PSI (District)": "08-0018",
+    "Colorado (State), Mesa (County), Palisade (City), Mesa (County) PSI (District)": "08-0027",
+    "Colorado (State), Mesa (County), Mesa (County) PSI (District), Mesa (County) Whitewater LID (District)": "08-0044",
+    "Colorado (State), Mesa (County), Mesa (County) PSI (District), Mesa (County) Gateway LID (District)": "08-0045",
+    "Colorado (State), Mesa (County), Mesa (County) PSI (District)": "08-0206",
+    "Colorado (State), Otero (County), Cheraw (City)": "09-0007",
+    "Colorado (State), Otero (County), Fowler (City)": "09-0011",
+    "Colorado (State), Otero (County), La Junta (City), La Junta HSD (District)": "09-0016",
+    "Colorado (State), Otero (County), Manzanola (City)": "09-0017",
+    "Colorado (State), Otero (County), Rocky Ford (City)": "09-0027",
+    "Colorado (State), Otero (County), Swink (City)": "09-0029",
+    "Colorado (State), Otero (County)": "09-0206",
+    "Colorado (State), Arapahoe (County), Aurora (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0001",
+    "Colorado (State), Arapahoe (County), Aurora (City), Scientific and Cultural Facilities District (CD) (District)": "10-0002",
+    "Colorado (State), Arapahoe (County), Deer Trail (City), Scientific and Cultural Facilities District (CD) (District)": "10-0005",
+    "Colorado (State), Arapahoe (County), Englewood (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0006",
+    "Colorado (State), Arapahoe (County), Foxfield (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0009",
+    "Colorado (State), Arapahoe (County), Littleton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0011",
+    "Colorado (State), Arapahoe (County), Sheridan (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0020",
+    "Colorado (State), Arapahoe (County), Cherry Hills Village (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0031",
+    "Colorado (State), Arapahoe (County), Columbine Valley (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0032",
+    "Colorado (State), Arapahoe (County), Glendale (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0033",
+    "Colorado (State), Arapahoe (County), Greenwood Village (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0034",
+    "Colorado (State), Arapahoe (County), Bow Mar (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0037",
+    "Colorado (State), Arapahoe (County), Centennial (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0040",
+    "Colorado (State), Arapahoe (County), Centennial (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Valley Club Pointe Metropolitan District PIF (District)": "10-0040",
+    "Colorado (State), Arapahoe (County), Bennett (City), Scientific and Cultural Facilities District (CD) (District)": "10-0042",
+    "Colorado (State), Arapahoe (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "10-0206",
+    "Colorado (State), Arapahoe (County), Scientific and Cultural Facilities District (CD) (District)": "10-0208",
+    "Colorado (State), Jefferson (County), Arvada (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0004",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Edgewater (City)": "11-0032",
+    "Colorado (State), Jefferson (County), Golden (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0042",
+    "Colorado (State), Jefferson (County), Lakeside PIF (District), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0058",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Lakewood (City)": "11-0059",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), South East Jefferson County in Lakewood LID (District), Scientific and Cultural Facilities District (CD) (District), Lakewood (City)": "11-0060",
+    "Colorado (State), Jefferson (County), Morrison (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0071",
+    "Colorado (State), Jefferson (County), Mountain View (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0074",
+    "Colorado (State), Jefferson (County), Wheat Ridge (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0124",
+    "Colorado (State), Jefferson (County), Bow Mar (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0141",
+    "Colorado (State), Jefferson (County), Westminster (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0142",
+    "Colorado (State), Jefferson (County), Superior (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0143",
+    "Colorado (State), Jefferson (County), Littleton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Littleton within Jefferson County LID (District)": "11-0145",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Aspen Park MDT (District), Scientific and Cultural Facilities District (CD) (District)": "11-0500",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), South East Jefferson County LID (District), Southwest Plaza MDT (District), Scientific and Cultural Facilities District (CD) (District)": "11-0155",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Mount Vernon Country Club MDT (District)": "11-0156",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Conifer MDT (District)": "11-0157",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), South East Jefferson County LID (District), Scientific and Cultural Facilities District (CD) (District)": "11-0158",
+    "Colorado (State), Jefferson (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "11-0206",
+    "Colorado (State), Adams (County), Aurora (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0003",
+    "Colorado (State), Adams (County), Bennett (City), Scientific and Cultural Facilities District (CD) (District)": "12-0007",
+    "Colorado (State), Adams (County), Brighton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0008",
+    "Colorado (State), Adams (County), Brighton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Prairie Center PIF (District)": "12-0008",
+    "Colorado (State), Adams (County), Federal Heights (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0016",
+    "Colorado (State), Adams (County), Westminster (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0043",
+    "Colorado (State), Adams (County), Thornton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0044",
+    "Colorado (State), Adams (County), Northglenn (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0054",
+    "Colorado (State), Adams (County), Commerce City (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0055",
+    "Colorado (State), Adams (County), Arvada (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0058",
+    "Colorado (State), Adams (County), Lochbuie (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0061",
+    "Colorado (State), Adams (County), Aurora (City), Scientific and Cultural Facilities District (CD) (District)": "12-0062",
+    "Colorado (State), Adams (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "12-0206",
+    "Colorado (State), Adams (County), Scientific and Cultural Facilities District (CD) (District)": "12-0208",
+    "Colorado (State), Logan (County), Crook (City)": "13-0006",
+    "Colorado (State), Logan (County), Crook (City), Logan County Lodging (District)": "13-0006",
+    "Colorado (State), Logan (County), Fleming (City)": "13-0008",
+    "Colorado (State), Logan (County), Fleming (City), Logan County Lodging (District)": "13-0008",
+    "Colorado (State), Logan (County), Iliff (City)": "13-0014",
+    "Colorado (State), Logan (County), Iliff (City), Logan County Lodging (District)": "13-0014",
+    "Colorado (State), Logan (County), Merino (City)": "13-0020",
+    "Colorado (State), Logan (County), Merino (City), Logan County Lodging (District)": "13-0020",
+    "Colorado (State), Logan (County), Peetz (City)": "13-0022",
+    "Colorado (State), Logan (County), Peetz (City), Logan County Lodging (District)": "13-0022",
+    "Colorado (State), Logan (County), Sterling (City), South Platte Valley RTA (District)": "13-0029",
+    "Colorado (State), Logan (County), Logan County Lodging (District)": "13-0206",
+    "Colorado (State), Fremont (County), Canon City (City)": "14-0008",
+    "Colorado (State), Fremont (County), Coal Creek (City)": "14-0010",
+    "Colorado (State), Fremont (County), Florence (City)": "14-0022",
+    "Colorado (State), Fremont (County), Rockvale (City)": "14-0039",
+    "Colorado (State), Fremont (County), Williamsburg (City)": "14-0050",
+    "Colorado (State), Fremont (County), Brookside (City)": "14-0052",
+    "Colorado (State), Fremont (County)": "14-0206",
+    "Colorado (State), Morgan (County), Brush (City)": "15-0004",
+    "Colorado (State), Morgan (County), Fort Morgan (City)": "15-0008",
+    "Colorado (State), Morgan (County), Hillrose (City)": "15-0013",
+    "Colorado (State), Morgan (County), Wiggins (City)": "15-0032",
+    "Colorado (State), Morgan (County), Log Lane Village (City)": "15-0038",
+    "Colorado (State), Morgan (County)": "15-0206",
+    "Colorado (State), Huerfano (County), La Veta (City)": "16-0031",
+    "Colorado (State), Huerfano (County), Walsenburg (City)": "16-0068",
+    "Colorado (State), Huerfano (County)": "16-0206",
+    "Colorado (State), Prowers (County), Granada (City)": "17-0010",
+    "Colorado (State), Prowers (County), Hartman (City)": "17-0012",
+    "Colorado (State), Prowers (County), Holly (City)": "17-0013",
+    "Colorado (State), Prowers (County), Lamar (City)": "17-0017",
+    "Colorado (State), Prowers (County), Wiley (City)": "17-0027",
+    "Colorado (State), Prowers (County)": "17-0206",
+    "Colorado (State), Delta (County), Cedaredge (City), Delta County PSI (District)": "18-0006",
+    "Colorado (State), Delta (County), Crawford (City), Delta County PSI (District)": "18-0010",
+    "Colorado (State), Delta (County), Delta (City), Delta County PSI (District)": "18-0011",
+    "Colorado (State), Delta (County), Hotchkiss (City), Delta County PSI (District)": "18-0018",
+    "Colorado (State), Delta (County), Paonia (City), Delta County PSI (District)": "18-0024",
+    "Colorado (State), Delta (County), Orchard City (City), Delta County PSI (District)": "18-0042",
+    "Colorado (State), Delta (County), Delta County PSI (District)": "18-0206",
+    "Colorado (State), Yuma (County), Eckley (City)": "19-0005",
+    "Colorado (State), Yuma (County), Wray (City)": "19-0017",
+    "Colorado (State), Yuma (County), Yuma (City)": "19-0018",
+    "Colorado (State), Yuma (County)": "19-0206",
+    "Colorado (State), La Plata (County), Bayfield (City)": "20-0003",
+    "Colorado (State), La Plata (County), Bayfield (City), La Plata County Lodging (District)": "20-0003",
+    "Colorado (State), La Plata (County), Durango (City)": "20-0014",
+    "Colorado (State), La Plata (County), Ignacio (City)": "20-0023",
+    "Colorado (State), La Plata (County), Ignacio (City), La Plata County Lodging (District)": "20-0023",
+    "Colorado (State), La Plata (County), La Plata County Lodging (District)": "20-0206",
+    "Colorado (State), Montrose (County), Montrose (City), Montrose County PSI (District)": "21-0011",
+    "Colorado (State), Montrose (County), Naturita (City), Montrose County PSI (District)": "21-0012",
+    "Colorado (State), Montrose (County), Nucla (City), Montrose County PSI (District)": "21-0013",
+    "Colorado (State), Montrose (County), Olathe (City), Montrose County PSI (District)": "21-0015",
+    "Colorado (State), Montrose (County), Montrose County PSI (District)": "21-0206",
+    "Colorado (State), Baca (County), Pritchett (City)": "22-0018",
+    "Colorado (State), Baca (County), Springfield (City)": "22-0022",
+    "Colorado (State), Baca (County), Two Buttes (City)": "22-0024",
+    "Colorado (State), Baca (County), Vilas (City)": "22-0026",
+    "Colorado (State), Baca (County), Walsh (City)": "22-0027",
+    "Colorado (State), Baca (County), Campo (City)": "22-0206",
+    "Colorado (State), Baca (County)": "22-0206",
+    "Colorado (State), Rio Grande (County), Del Norte (City), Mineral-Rio Grande Health Service District (District)": "23-0002",
+    "Colorado (State), Rio Grande (County), Monte Vista (City), Mineral-Rio Grande Health Service District (District)": "23-0018",
+    "Colorado (State), Rio Grande (County), South Fork (City), Mineral-Rio Grande Health Service District (District)": "23-0023",
+    "Colorado (State), Rio Grande (County), Center (City), Mineral-Rio Grande Health Service District (District)": "23-0035",
+    "Colorado (State), Rio Grande (County), Mineral-Rio Grande Health Service District (District)": "23-0206",
+    "Colorado (State), Garfield (County), Carbondale (City), Roaring Fork RTA Carbondale and Glenwood Springs (District)": "24-0007",
+    "Colorado (State), Garfield (County), Glenwood Springs (City), Roaring Fork RTA Carbondale and Glenwood Springs (District)": "24-0016",
+    "Colorado (State), Garfield (County), Parachute (City)": "24-0018",
+    "Colorado (State), Garfield (County), New Castle (City), Roaring Fork RTA Basalt and New Castle (District)": "24-0031",
+    "Colorado (State), Garfield (County), Rifle (City)": "24-0035",
+    "Colorado (State), Garfield (County), Silt (City)": "24-0042",
+    "Colorado (State), Garfield (County), Carbonate (City)": "24-0206",
+    "Colorado (State), Garfield (County)": "24-0206",
+    "Colorado (State), Conejos (County), Antonito (City)": "25-0001",
+    "Colorado (State), Conejos (County), La Jara (City)": "25-0010",
+    "Colorado (State), Conejos (County), Manassa (City)": "25-0015",
+    "Colorado (State), Conejos (County), Romeo (City)": "25-0021",
+    "Colorado (State), Conejos (County), Sanford (City)": "25-0023",
+    "Colorado (State), Conejos (County)": "25-0206",
+    "Colorado (State), Kit Carson (County), Bethune (City)": "26-0001",
+    "Colorado (State), Kit Carson (County), Burlington (City)": "26-0002",
+    "Colorado (State), Kit Carson (County), Flagler (City)": "26-0004",
+    "Colorado (State), Kit Carson (County), Seibert (City)": "26-0008",
+    "Colorado (State), Kit Carson (County), Stratton (City)": "26-0009",
+    "Colorado (State), Kit Carson (County), Vona (City)": "26-0010",
+    "Colorado (State), Kit Carson (County)": "26-0206",
+    "Colorado (State), Washington (County), Akron (City)": "27-0001",
+    "Colorado (State), Washington (County), Otis (City)": "27-0014",
+    "Colorado (State), Washington (County)": "27-0206",
+    "Colorado (State), Routt (County), Hayden (City)": "28-0020",
+    "Colorado (State), Routt (County), Oak Creek (City)": "28-0028",
+    "Colorado (State), Routt (County), Steamboat Springs (City), Steamboat Springs Marketing District (District)": "28-0041",
+    "Colorado (State), Routt (County), Yampa (City)": "28-0048",
+    "Colorado (State), Routt (County), Steamboat Springs (City)": "28-0049",
+    "Colorado (State), Routt (County), Steamboat Springs Marketing District (District)": "28-0206",
+    "Colorado (State), Routt (County)": "28-0206",
+    "Colorado (State), Bent (County), Las Animas (City)": "29-0016",
+    "Colorado (State), Bent (County)": "29-0206",
+    "Colorado (State), Alamosa (County), Alamosa (City)": "30-0001",
+    "Colorado (State), Alamosa (County), Hooper (City)": "30-0010",
+    "Colorado (State), Alamosa (County)": "30-0206",
+    "Colorado (State), Chaffee (County), Buena Vista (City)": "31-0008",
+    "Colorado (State), Chaffee (County), Poncha Springs (City)": "31-0027",
+    "Colorado (State), Chaffee (County), Salida (City)": "31-0031",
+    "Colorado (State), Chaffee (County)": "31-0206",
+    "Colorado (State), Montezuma (County), Cortez (City), Montezuma County HSD (District)": "32-0005",
+    "Colorado (State), Montezuma (County), Dolores (City), Montezuma County HSD (District)": "32-0006",
+    "Colorado (State), Montezuma (County), Dolores (City), Montezuma County Lodging (District), Montezuma County HSD (District)": "32-0006",
+    "Colorado (State), Montezuma (County), Mancos (City), Montezuma County HSD (District)": "32-0017",
+    "Colorado (State), Montezuma (County), Mancos (City), Montezuma County Lodging (District), Montezuma County HSD (District)": "32-0017",
+    "Colorado (State), Montezuma (County), Montezuma County HSD (District)": "32-0206",
+    "Colorado (State), Montezuma (County), Montezuma County Lodging (District), Montezuma County HSD (District)": "32-0206",
+    "Colorado (State), Lincoln (County), Arriba (City)": "33-0001",
+    "Colorado (State), Lincoln (County), Genoa (City)": "33-0009",
+    "Colorado (State), Lincoln (County), Hugo (City)": "33-0012",
+    "Colorado (State), Lincoln (County), Limon (City)": "33-0016",
+    "Colorado (State), Lincoln (County)": "33-0206",
+    "Colorado (State), Elbert (County), Elizabeth (City)": "34-0006",
+    "Colorado (State), Elbert (County), Kiowa (City)": "34-0008",
+    "Colorado (State), Elbert (County), Simla (City)": "34-0014",
+    "Colorado (State), Elbert (County), Limon (City)": "34-0017",
+    "Colorado (State), Elbert (County)": "34-0206",
+    "Colorado (State), Saguache (County), Bonanza (City)": "35-0002",
+    "Colorado (State), Saguache (County), Center (City)": "35-0004",
+    "Colorado (State), Saguache (County), Crestone (City)": "35-0007",
+    "Colorado (State), Saguache (County), Moffat (City)": "35-0017",
+    "Colorado (State), Saguache (County), Saguache (City)": "35-0022",
+    "Colorado (State), Saguache (County)": "35-0206",
+    "Colorado (State), Crowley (County), Crowley (City)": "36-0001",
+    "Colorado (State), Crowley (County), Olney Springs (City)": "36-0005",
+    "Colorado (State), Crowley (County), Ordway (City)": "36-0006",
+    "Colorado (State), Crowley (County), Sugar City (City)": "36-0008",
+    "Colorado (State), Crowley (County)": "36-0206",
+    "Colorado (State), Phillips (County), Haxtun (City)": "37-0003",
+    "Colorado (State), Phillips (County), Holyoke (City)": "37-0004",
+    "Colorado (State), Phillips (County), Paoli (City)": "37-0005",
+    "Colorado (State), Phillips (County)": "37-0206",
+    "Colorado (State), Costilla (County), Blanca (City)": "38-0001",
+    "Colorado (State), Costilla (County), San Luis (City)": "38-0019",
+    "Colorado (State), Costilla (County)": "38-0206",
+    "Colorado (State), Sedgwick (County), Julesburg (City)": "39-0004",
+    "Colorado (State), Sedgwick (County), Ovid (City)": "39-0005",
+    "Colorado (State), Sedgwick (County), Sedgwick (City)": "39-0006",
+    "Colorado (State), Sedgwick (County)": "39-0206",
+    "Colorado (State), Gunnison (County), Crested Butte (City), Gunnison Valley RTA (District)": "40-0017",
+    "Colorado (State), Gunnison (County), Gunnison (City), Gunnison Valley RTA (District)": "40-0027",
+    "Colorado (State), Gunnison (County), Marble (City)": "40-0042",
+    "Colorado (State), Gunnison (County), Ohio City (District)": "40-0045",
+    "Colorado (State), Gunnison (County), Pitkin (City)": "40-0049",
+    "Colorado (State), Gunnison (County), Somerset (District)": "40-0056",
+    "Colorado (State), Gunnison (County), Mount Crested Butte (City), Gunnison Valley RTA (District)": "40-0073",
+    "Colorado (State), Gunnison (County), Gunnison Valley RTA (District)": "40-0206",
+    "Colorado (State), Lake (County), Leadville (City)": "41-0024",
+    "Colorado (State), Lake (County)": "41-0206",
+    "Colorado (State), Moffat (County), Dinosaur (City)": "42-0001",
+    "Colorado (State), Moffat (County), Craig (City)": "42-0004",
+    "Colorado (State), Moffat (County)": "42-0206",
+    "Colorado (State), Teller (County), Cripple Creek (City)": "43-0006",
+    "Colorado (State), Teller (County), Victor (City)": "43-0023",
+    "Colorado (State), Teller (County), Woodland Park (City), Ute Pass Regional HSD (District)": "43-0026",
+    "Colorado (State), Teller (County), Green Mountain Falls (City)": "43-0031",
+    "Colorado (State), Teller (County)": "43-0206",
+    "Colorado (State), Teller (County), Ute Pass Regional HSD (District)": "43-0208",
+    "Colorado (State), Eagle (County), Avon (City), Eagle County MTS (District)": "44-0003",
+    "Colorado (State), Eagle (County), Basalt (City), Roaring Fork RTA Basalt and New Castle (District), Eagle County MTS (District)": "44-0005",
+    "Colorado (State), Eagle (County), Eagle (City), Eagle County MTS (District)": "44-0022",
+    "Colorado (State), Eagle (County), Gypsum (City), Eagle County MTS (District)": "44-0026",
+    "Colorado (State), Eagle (County), Minturn (City), Eagle County MTS (District)": "44-0030",
+    "Colorado (State), Eagle (County), Red Cliff (City), Eagle County MTS (District)": "44-0038",
+    "Colorado (State), Eagle (County), Vail (City), Eagle County MTS (District)": "44-0060",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Bachelor Gulch MDT (District)": "44-0064",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Two Rivers MDT (District)": "44-0065",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Edwards MDT (District)": "44-0066",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Red Sky Ranch MDT (District)": "44-0067",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Eagle-Vail MDT (District)": "44-0068",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Arrowhead MDT (District)": "44-0069",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Edwards MDT (District), Arrowhead MDT (District)": "44-0070",
+    "Colorado (State), Eagle (County), Eagle County MTS (District)": "44-0206",
+    "Colorado (State), Eagle (County), Eagle County MTS (District), Roaring Fork RTA Unincorporated Eagle Co (District)": "44-0208",
+    "Colorado (State), Kiowa (County), Eads (City)": "45-0006",
+    "Colorado (State), Kiowa (County), Haswell (City)": "45-0009",
+    "Colorado (State), Kiowa (County), Sheridan Lake (City)": "45-0014",
+    "Colorado (State), Kiowa (County)": "45-0206",
+    "Colorado (State), Cheyenne (County), Cheyenne Wells (City)": "46-0006",
+    "Colorado (State), Cheyenne (County), Kit Carson (City)": "46-0009",
+    "Colorado (State), Cheyenne (County)": "46-0206",
+    "Colorado (State), Douglas (County), Castle Rock (City)": "47-0002",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Franktown (District)": "47-0006",
+    "Colorado (State), Douglas (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Franktown (District)": "47-0007",
+    "Colorado (State), Douglas (County), Larkspur (City)": "47-0012",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Louviers (District)": "47-0013",
+    "Colorado (State), Douglas (County), Parker (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "47-0016",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Sedalia (District)": "47-0017",
+    "Colorado (State), Douglas (County), Littleton (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "47-0027",
+    "Colorado (State), Douglas (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District), Highlands Ranch (District)": "47-0028",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Highlands Ranch (District)": "47-0029",
+    "Colorado (State), Douglas (County), Aurora (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "47-0030",
+    "Colorado (State), Douglas (County), Lone Tree (City), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "47-0031",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Unincorporated Littleton (District)": "47-0041",
+    "Colorado (State), Douglas (County), Regional Transportation District (RTD) (District), Lincoln Station LID (District), Scientific and Cultural Facilities District (CD) (District)": "47-0042",
+    "Colorado (State), Douglas (County), Castle Pines (City), Scientific and Cultural Facilities District (CD) (District)": "47-0043",
+    "Colorado (State), Douglas (County), Parker (City), Scientific and Cultural Facilities District (CD) (District)": "47-0046",
+    "Colorado (State), Douglas (County), Littleton (City), Scientific and Cultural Facilities District (CD) (District)": "47-0048",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District), Ute Pass Regional HSD (District)": "47-0049",
+    "Colorado (State), Douglas (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "47-0206",
+    "Colorado (State), Douglas (County), Scientific and Cultural Facilities District (CD) (District)": "47-0208",
+    "Colorado (State), Archuleta (County), Pagosa Springs (City)": "48-0012",
+    "Colorado (State), Archuleta (County), Archuleta County Lodging (District)": "48-0206",
+    "Colorado (State), Archuleta (County)": "48-0206",
+    "Colorado (State), Rio Blanco (County), Meeker (City)": "49-0003",
+    "Colorado (State), Rio Blanco (County), Rangely (City)": "49-0006",
+    "Colorado (State), Rio Blanco (County)": "49-0206",
+    "Colorado (State), San Miguel (County), Mountain Village (City), San Miguel RTA (District)": "50-0010",
+    "Colorado (State), San Miguel (County), Norwood (City)": "50-0017",
+    "Colorado (State), San Miguel (County), Norwood (City), San Miguel County Lodging (District)": "50-0017",
+    "Colorado (State), San Miguel (County), Ophir (City)": "50-0018",
+    "Colorado (State), San Miguel (County), Ophir (City), San Miguel County Lodging (District)": "50-0018",
+    "Colorado (State), San Miguel (County), Telluride (City), San Miguel RTA (District)": "50-0027",
+    "Colorado (State), San Miguel (County), Telluride (City), San Miguel RTA (District), San Miguel County Lodging (District)": "50-0027",
+    "Colorado (State), San Miguel (County), Sawpit (City)": "50-0030",
+    "Colorado (State), San Miguel (County), Sawpit (City), San Miguel County Lodging (District)": "50-0030",
+    "Colorado (State), San Miguel (County), San Miguel RTA (District)": "50-0206",
+    "Colorado (State), San Miguel (County), San Miguel RTA (District), San Miguel County Lodging (District)": "50-0206",
+    "Colorado (State), San Miguel (County), San Miguel County Lodging (District)": "50-0209",
+    "Colorado (State), San Miguel (County)": "50-0209",
+    "Colorado (State), Clear Creek (County), Empire (City)": "51-0007",
+    "Colorado (State), Clear Creek (County), Georgetown (City)": "51-0010",
+    "Colorado (State), Clear Creek (County), Idaho Springs (City)": "51-0011",
+    "Colorado (State), Clear Creek (County), Silver Plume (City)": "51-0015",
+    "Colorado (State), Clear Creek (County)": "51-0206",
+    "Colorado (State), Custer (County), Silver Cliff (City)": "52-0008",
+    "Colorado (State), Custer (County), Westcliffe (City)": "52-0009",
+    "Colorado (State), Custer (County)": "52-0206",
+    "Colorado (State), Grand (County), Fraser (City)": "53-0007",
+    "Colorado (State), Grand (County), Fraser (City), Grand County Lodging (District)": "53-0007",
+    "Colorado (State), Grand (County), Granby (City)": "53-0009",
+    "Colorado (State), Grand (County), Granby (City), Grand County Lodging (District)": "53-0009",
+    "Colorado (State), Grand (County), Grand Lake (City)": "53-0010",
+    "Colorado (State), Grand (County), Grand Lake (City), Grand County Lodging (District)": "53-0010",
+    "Colorado (State), Grand (County), Kremmling (City)": "53-0012",
+    "Colorado (State), Grand (County), Kremmling (City), Grand County Lodging (District)": "53-0012",
+    "Colorado (State), Grand (County), Hot Sulphur Springs (City)": "53-0017",
+    "Colorado (State), Grand (County), Hot Sulphur Springs (City), Grand County Lodging (District)": "53-0017",
+    "Colorado (State), Grand (County), Winter Park (City)": "53-0024",
+    "Colorado (State), Grand (County), Grand County Lodging (District)": "53-0206",
+    "Colorado (State), Grand (County)": "53-0206",
+    "Colorado (State), Park (County), Alma (City), South Park HSD (District)": "54-0001",
+    "Colorado (State), Park (County), Fairplay (City), South Park HSD (District)": "54-0007",
+    "Colorado (State), Park (County), South Park HSD (District)": "54-0206",
+    "Colorado (State), Park (County)": "54-0208",
+    "Colorado (State), Park (County), Ute Pass Regional HSD (District)": "54-0209",
+    "Colorado (State), Park (County), South Park HSD (District), Ute Pass Regional HSD (District)": "54-0210",
+    "Colorado (State), San Juan (County), Silverton (City)": "55-0018",
+    "Colorado (State), San Juan (County)": "55-0206",
+    "Colorado (State), Ouray (County), Ouray (City)": "56-0011",
+    "Colorado (State), Ouray (County), Ridgway (City)": "56-0017",
+    "Colorado (State), Ouray (County)": "56-0206",
+    "Colorado (State), Pitkin Balance of County (County), Aspen (City), Pitkin County MTSD (District), Roaring Fork RTA Snowmass and Aspen (District)": "57-0001",
+    "Colorado (State), Basalt4, Pitkin County MTSD (District), Roaring Fork RTA Basalt and New Castle (District), Pitkin County within Basalt (County)": "57-0018",
+    "Colorado (State), Pitkin Balance of County (County), Snowmass Village (City), Pitkin County MTSD (District), Roaring Fork RTA Snowmass and Aspen (District)": "57-0019",
+    "Colorado (State), Pitkin Balance of County (County), Pitkin County MTSD (District), Roaring Fork RTA Snowmass and Aspen (District)": "57-0206",
+    "Colorado (State), Dolores (County), Dove Creek (City)": "58-0004",
+    "Colorado (State), Dolores (County), Rico (City), San Miguel RTA (District)": "58-0010",
+    "Colorado (State), Dolores (County)": "58-0206",
+    "Colorado (State), Jackson (County), Walden (City)": "59-0018",
+    "Colorado (State), Jackson (County)": "59-0206",
+    "Colorado (State), Gilpin (County), Black Hawk (City)": "60-0004",
+    "Colorado (State), Gilpin (County), Central City (City)": "60-0005",
+    "Colorado (State), Gilpin (County)": "60-0206",
+    "Colorado (State), Summit (County), Breckenridge (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0001",
+    "Colorado (State), Summit (County), Dillon (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0005",
+    "Colorado (State), Summit (County), Frisco (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0007",
+    "Colorado (State), Summit (County), Montezuma (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0011",
+    "Colorado (State), Summit (County), Silverthorne (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0017",
+    "Colorado (State), Summit (County), Blue River (City), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0022",
+    "Colorado (State), Summit (County), Summit County MTS (District), Summit Combined Housing Authority (District), Copper Mountain (District)": "61-0023",
+    "Colorado (State), Summit (County), Summit County MTS (District), Summit Combined Housing Authority (District), Keystone (District)": "61-0024",
+    "Colorado (State), Summit (County), Summit County MTS (District), Summit Combined Housing Authority (District), Buffalo Mountain Metro District (District)": "61-0025",
+    "Colorado (State), Summit (County), Summit County MTS (District), Summit Combined Housing Authority (District)": "61-0206",
+    "Colorado (State), Mineral (County), Creede (City), Mineral-Rio Grande Health Service District (District)": "62-0002",
+    "Colorado (State), Mineral (County), Mineral-Rio Grande Health Service District (District)": "62-0206",
+    "Colorado (State), Hinsdale (County), Lake City (City)": "63-0002",
+    "Colorado (State), Hinsdale (County)": "63-0206",
+    "Colorado (State), Broomfield, City and County (County), Broomfield City and (County) LID Arista (District), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "64-0001",
+    "Colorado (State), Broomfield, City and County (County), Broomfield City and (County) LID Flatiron (District), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "64-0001",
+    "Colorado (State), Broomfield, City and County (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "64-0001",
+    "Colorado (State), Broomfield, City and County (County), Scientific and Cultural Facilities District (CD) (District)": "64-0005"
+      };
+      
+      function permute(arr) {
+            let result = [];
+            if (arr.length === 0)
+                return [[]];
+            for (let i = 0; i < arr.length; i++) {
+                const currentElement = arr[i];
+                const remainingElements = arr.slice(0, i).concat(arr.slice(i + 1));
+                const remainingPermutations = permute(remainingElements);
+                for (let j = 0; j < remainingPermutations.length; j++) {
+                    result.push([currentElement].concat(remainingPermutations[j]));
+                }
+            }
+            return result;
+        }
+
+        function generateJurisdictionKey(jurisdictionNames) {
+            console.log("Jurisdiction Names:", jurisdictionNames);
+            const permutations = permute(jurisdictionNames);
+
+            for (const permutation of permutations) {
+                const key = permutation.join(", ");
+                if (jurisdictionCodes[key]) {
+                    return {
+                        key,
+                        code: jurisdictionCodes[key]
+                    };
+                }
+            }
+
+            console.log("No matching key found in jurisdictionCodes.");
+            console.log("Generated permutations:", permutations);
+            return {
+                key: "",
+                code: "Unknown"
+            };
+        }
+
+        require([
+            "esri/Map", 
+            "esri/views/MapView", 
+            "esri/layers/FeatureLayer", 
+            "esri/renderers/UniqueValueRenderer", 
+            "esri/symbols/SimpleFillSymbol", 
+            "esri/Color"
+        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
+            var pastelColors = {};
+
+            var map = new Map({
+                basemap: "hybrid",
+                ground: "world-elevation"
+            });
+
+            var view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [-105.7821, 39.550051],
+                zoom: 7
+            });
+
+            function getRandomPastelColor() {
+                const r = Math.round((Math.random() * 127) + 127);
+                const g = Math.round((Math.random() * 127) + 127);
+                const b = Math.round((Math.random() * 127) + 127);
+                return `rgba(${r}, ${g}, ${b}, 0.7)`;
+            }
+
+            var featureLayer = new FeatureLayer({
+                url: "https://services3.arcgis.com/DgjqnJA1rgO92Soi/arcgis/rest/services/Q1_2024_Web_Map_WFL1/FeatureServer",
+                outFields: ["*"],
+                orderBy: [{
+                    field: "Shape_Size",
+                    order: "desc"
+                }]
+            });
+
+            featureLayer.load().then(function() {
+                featureLayer.queryFeatures().then(function(results) {
+                    results.features.forEach(function(feature) {
+                        var jurisdictionName = feature.attributes.Jurisdiction_Name;
+                        if (!pastelColors[jurisdictionName]) {
+                            pastelColors[jurisdictionName] = getRandomPastelColor();
+                        }
+                    });
+
+                    var renderer = new UniqueValueRenderer({
+                        field: "Jurisdiction_Name",
+                        uniqueValueInfos: Object.keys(pastelColors).map(function(key) {
+                            return {
+                                value: key,
+                                symbol: new SimpleFillSymbol({
+                                    color: pastelColors[key],
+                                    outline: {
+                                        color: [0, 0, 0, 1],
+                                        width: 1
+                                    }
+                                })
+                            };
+                        })
+                    });
+
+                    featureLayer.renderer = renderer;
+                    map.add(featureLayer);
+                });
+            });
+
+            let isProcessingClick = false;
+
+            async function handleMapClick(event) {
+                if (isProcessingClick)
+                    return;
+                isProcessingClick = true;
+
+                try {
+                    const response = await view.hitTest(event.screenPoint);
+                    const results = response.results.filter(function(result) {
+                        return result.graphic.layer === featureLayer;
+                    });
+
+                    if (results.length > 0) {
+                        var jurisdictionNames = results.map(result => result.graphic.attributes.Jurisdiction_Name);
+                        console.log("Jurisdiction Names from results:", jurisdictionNames);
+
+                        var content = results.map(function(result) {
+                            var attributes = result.graphic.attributes;
+                            return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
+                        }).join("<hr>");
+
+                        var totalTaxRate = results.reduce(function(sum, result) {
+                            var taxRate = result.graphic.attributes.Tax_Rate;
+                            return sum + (taxRate !== undefined ? taxRate * 100 : 0);
+                        }, 0).toFixed(2);
+
+                        var jurisdiction = generateJurisdictionKey(jurisdictionNames);
+                        console.log("Jurisdiction:", jurisdiction);
+
+                        var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
+                        var geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({
+                            'location': latlng
+                        }, function(geocodeResults, status) {
+                            if (status === 'OK' && geocodeResults[0]) {
+                                var address = geocodeResults[0].formatted_address;
+                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
+
+                                console.log("Popup Content:", content);
+
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content,
+                                    location: event.mapPoint
+                                });
+                            } else {
+                                console.log("Popup Content:", content);
+
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
+                                    location: event.mapPoint
+                                });
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error handling map click:', error);
+                } finally {
+                    isProcessingClick = false;
+                }
+            }
+
+            view.on("click", handleMapClick);
+        });
+    </script>
+</body>
+</html>
