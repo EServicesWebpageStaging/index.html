@@ -6,10 +6,6 @@
     <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css">
     <script src="https://js.arcgis.com/4.24/"></script>
-    <script>
-        var googleMapsApiKey = 'AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo'; // Replace with your actual API key
-    </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo"></script>
     <style>
         html, body {
             padding: 0;
@@ -657,14 +653,17 @@
                         var jurisdiction = generateJurisdictionKey(jurisdictionNames);
                         console.log("Jurisdiction:", jurisdiction);
 
-                        var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
-                        var geocoder = new google.maps.Geocoder();
-                        geocoder.geocode({
-                            'location': latlng
-                        }, function(geocodeResults, status) {
-                            if (status === 'OK' && geocodeResults[0]) {
-                                var address = geocodeResults[0].formatted_address;
-                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
+                        // Use Cloud Function to get address
+                        var lat = event.mapPoint.latitude;
+                        var lng = event.mapPoint.longitude;
+                        var cloudFunctionUrl = 'YOUR_CLOUD_FUNCTION_URL'; // Replace with your actual Cloud Function URL
+                        
+                        try {
+                            const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
+                            const geocodeData = await response.json();
+                            if (geocodeData.results && geocodeData.results[0]) {
+                                var address = geocodeData.results[0].formatted_address;
+                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
 
                                 console.log("Popup Content:", content);
 
@@ -678,11 +677,13 @@
 
                                 view.popup.open({
                                     title: "Tax Rates Information",
-                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
+                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
                                     location: event.mapPoint
                                 });
                             }
-                        });
+                        } catch (error) {
+                            console.error('Error fetching geocode data:', error);
+                        }
                     }
                 } catch (error) {
                     console.error('Error handling map click:', error);
