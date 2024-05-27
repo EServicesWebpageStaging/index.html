@@ -656,7 +656,7 @@
                         // Use Cloud Function to get address
                         var lat = event.mapPoint.latitude;
                         var lng = event.mapPoint.longitude;
-                        var cloudFunctionUrl = 'YOUR_CLOUD_FUNCTION_URL'; // Replace with your actual Cloud Function URL
+                        var cloudFunctionUrl = 'https://index-html-red-one.vercel.app'; // Replace with your actual Cloud Function URL
                         
                         try {
                             const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
