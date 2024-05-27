@@ -625,6 +625,8 @@
 
             let isProcessingClick = false;
 
+            const cloudFunctionUrl = 'https://your-cloud-function-url.vercel.app/api/function'; // Replace with your actual Cloud Function URL
+
             async function handleMapClick(event) {
                 if (isProcessingClick)
                     return;
@@ -656,12 +658,10 @@
                         // Use Cloud Function to get address
                         var lat = event.mapPoint.latitude;
                         var lng = event.mapPoint.longitude;
-                        var cloudFunctionUrl = 'https://index-html-red-one.vercel.app/api/getAddress'; // Use the actual Cloud Function URL
                         
                         try {
                             const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
-                            const contentType = response.headers.get("content-type");
-                            if (contentType && contentType.indexOf("application/json") !== -1) {
+                            if (response.ok && response.headers.get('content-type').includes('application/json')) {
                                 const geocodeData = await response.json();
                                 if (geocodeData.results && geocodeData.results[0]) {
                                     var address = geocodeData.results[0].formatted_address;
