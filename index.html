@@ -656,38 +656,51 @@
                         // Use Cloud Function to get address
                         var lat = event.mapPoint.latitude;
                         var lng = event.mapPoint.longitude;
-                        var cloudFunctionUrl = 'https://index-html-red-one.vercel.app'; // Replace with your actual Cloud Function URL
+                        var cloudFunctionUrl = 'https://index-html-red-one.vercel.app/api/getAddress'; // Use the actual Cloud Function URL
                         
                         try {
                             const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
-                            const geocodeData = await response.json();
-                            if (geocodeData.results && geocodeData.results[0]) {
-                                var address = geocodeData.results[0].formatted_address;
-                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
+                            const contentType = response.headers.get("content-type");
+                            if (contentType && contentType.indexOf("application/json") !== -1) {
+                                const geocodeData = await response.json();
+                                if (geocodeData.results && geocodeData.results[0]) {
+                                    var address = geocodeData.results[0].formatted_address;
+                                    content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
 
-                                console.log("Popup Content:", content);
+                                    console.log("Popup Content:", content);
 
-                                view.popup.open({
-                                    title: "Tax Rates Information",
-                                    content: content,
-                                    location: event.mapPoint
-                                });
+                                    view.popup.open({
+                                        title: "Tax Rates Information",
+                                        content: content,
+                                        location: event.mapPoint
+                                    });
+                                } else {
+                                    console.log("Popup Content:", content);
+
+                                    view.popup.open({
+                                        title: "Tax Rates Information",
+                                        content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
+                                        location: event.mapPoint
+                                    });
+                                }
                             } else {
-                                console.log("Popup Content:", content);
-
-                                view.popup.open({
-                                    title: "Tax Rates Information",
-                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
-                                    location: event.mapPoint
-                                });
+                                throw new Error("Invalid content-type");
                             }
                         } catch (error) {
-                            console.error('Error fetching geocode data:', error);
+                            console.error("Error fetching geocode data:", error);
+                            view.popup.open({
+                                title: "Tax Rates Information",
+                                content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code + "<br>" + "<b>Error:</b> Failed to fetch address data",
+                                location: event.mapPoint
+                            });
+                        } finally {
+                            isProcessingClick = false;
                         }
+                    } else {
+                        isProcessingClick = false;
                     }
                 } catch (error) {
-                    console.error('Error handling map click:', error);
-                } finally {
+                    console.error("Error handling map click:", error);
                     isProcessingClick = false;
                 }
             }
