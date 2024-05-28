@@ -518,10 +518,9 @@
     "Colorado (State), Broomfield, City and County (County), Scientific and Cultural Facilities District (CD) (District)": "64-0005"
       };
       
-      function permute(arr) {
+     function permute(arr) {
             let result = [];
-            if (arr.length === 0)
-                return [[]];
+            if (arr.length === 0) return [[]];
             for (let i = 0; i < arr.length; i++) {
                 const currentElement = arr[i];
                 const remainingElements = arr.slice(0, i).concat(arr.slice(i + 1));
@@ -536,7 +535,6 @@
         function generateJurisdictionKey(jurisdictionNames) {
             console.log("Jurisdiction Names:", jurisdictionNames);
             const permutations = permute(jurisdictionNames);
-
             for (const permutation of permutations) {
                 const key = permutation.join(", ");
                 if (jurisdictionCodes[key]) {
@@ -546,7 +544,6 @@
                     };
                 }
             }
-
             console.log("No matching key found in jurisdictionCodes.");
             console.log("Generated permutations:", permutations);
             return {
@@ -564,7 +561,6 @@
             "esri/Color"
         ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
             var pastelColors = {};
-
             var map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
@@ -624,30 +620,26 @@
             });
 
             let isProcessingClick = false;
-
-            const cloudFunctionUrl = 'https://index-html-red-one.vercel.app/'; // Replaced with your actual Cloud Function URL
+            const cloudFunctionUrl = 'https://index-html-red-one.vercel.app/'; // Your actual Cloud Function URL
 
             async function handleMapClick(event) {
-                if (isProcessingClick)
-                    return;
+                if (isProcessingClick) return;
                 isProcessingClick = true;
 
                 try {
                     const response = await view.hitTest(event.screenPoint);
-                    const results = response.results.filter(function(result) {
-                        return result.graphic.layer === featureLayer;
-                    });
+                    const results = response.results.filter(result => result.graphic.layer === featureLayer);
 
                     if (results.length > 0) {
                         var jurisdictionNames = results.map(result => result.graphic.attributes.Jurisdiction_Name);
                         console.log("Jurisdiction Names from results:", jurisdictionNames);
 
-                        var content = results.map(function(result) {
+                        var content = results.map(result => {
                             var attributes = result.graphic.attributes;
                             return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
                         }).join("<hr>");
 
-                        var totalTaxRate = results.reduce(function(sum, result) {
+                        var totalTaxRate = results.reduce((sum, result) => {
                             var taxRate = result.graphic.attributes.Tax_Rate;
                             return sum + (taxRate !== undefined ? taxRate * 100 : 0);
                         }, 0).toFixed(2);
@@ -655,45 +647,31 @@
                         var jurisdiction = generateJurisdictionKey(jurisdictionNames);
                         console.log("Jurisdiction:", jurisdiction);
 
-                        // Use Cloud Function to get address
                         var lat = event.mapPoint.latitude;
                         var lng = event.mapPoint.longitude;
-                        
+
                         try {
-                            const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
-                            if (response.ok && response.headers.get('content-type').includes('application/json')) {
-                                const geocodeData = await response.json();
+                            const geocodeResponse = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
+                            if (geocodeResponse.ok && geocodeResponse.headers.get('content-type').includes('application/json')) {
+                                const geocodeData = await geocodeResponse.json();
                                 if (geocodeData.results && geocodeData.results[0]) {
                                     var address = geocodeData.results[0].formatted_address;
                                     content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
-
-                                    console.log("Popup Content:", content);
-
-                                    view.popup.open({
-                                        title: "Tax Rates Information",
-                                        content: content,
-                                        location: event.mapPoint
-                                    });
                                 } else {
-                                    console.log("Popup Content:", content);
-
-                                    view.popup.open({
-                                        title: "Tax Rates Information",
-                                        content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
-                                        location: event.mapPoint
-                                    });
+                                    content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
                                 }
                             } else {
-                                throw new Error("Invalid content-type");
+                                throw new Error(`Geocode response error: ${geocodeResponse.status} ${geocodeResponse.statusText}`);
                             }
                         } catch (error) {
                             console.error("Error fetching geocode data:", error);
+                            content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code + "<br>" + "<b>Error:</b> Failed to fetch address data";
+                        } finally {
                             view.popup.open({
                                 title: "Tax Rates Information",
-                                content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code + "<br>" + "<b>Error:</b> Failed to fetch address data",
+                                content: content,
                                 location: event.mapPoint
                             });
-                        } finally {
                             isProcessingClick = false;
                         }
                     } else {
