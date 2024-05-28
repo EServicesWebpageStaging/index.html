@@ -652,35 +652,39 @@
                         var jurisdiction = generateJurisdictionKey(jurisdictionNames);
                         console.log("Jurisdiction:", jurisdiction);
 
-                        var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
-                        var geocoder = new google.maps.Geocoder();
-                        geocoder.geocode({
-                            'location': latlng
-                        }, function(geocodeResults, status) {
-                            if (status === 'OK' && geocodeResults[0]) {
-                                var address = geocodeResults[0].formatted_address;
-                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
+                        const lat = event.mapPoint.latitude;
+                        const lng = event.mapPoint.longitude;
 
-                                console.log("Popup Content:", content);
+                        const geocodeResponse = await fetch(`https://index-html-red-one.vercel.app/?lat=${lat}&lng=${lng}`);
+                        if (!geocodeResponse.ok) {
+                            throw new Error('Network response was not ok');
+                        }
 
-                                view.popup.open({
-                                    title: "Tax Rates Information",
-                                    content: content,
-                                    location: event.mapPoint
-                                });
-                            } else {
-                                console.log("Popup Content:", content);
+                        const contentType = geocodeResponse.headers.get("content-type");
+                        if (!contentType || !contentType.includes("application/json")) {
+                            throw new TypeError("Expected JSON response");
+                        }
 
-                                view.popup.open({
-                                    title: "Tax Rates Information",
-                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
-                                    location: event.mapPoint
-                                });
-                            }
+                        const geocodeData = await geocodeResponse.json();
+                        const address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
+
+                        content += `<hr><b>Total Tax Rate:</b> ${totalTaxRate}%<br><b>Address:</b> ${address}<br><b>Coordinates:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}<br><b>Jurisdiction Code:</b> ${jurisdiction.code}`;
+
+                        console.log("Popup Content:", content);
+
+                        view.popup.open({
+                            title: "Tax Rates Information",
+                            content: content,
+                            location: event.mapPoint
                         });
                     }
                 } catch (error) {
-                    console.error('Error handling map click:', error);
+                    console.error("Error fetching geocode data:", error);
+                    view.popup.open({
+                        title: "Tax Rates Information",
+                        content: `<b>Error fetching geocode data:</b> ${error.message}`,
+                        location: event.mapPoint
+                    });
                 } finally {
                     isProcessingClick = false;
                 }
