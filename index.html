@@ -520,7 +520,8 @@
       
      function permute(arr) {
             let result = [];
-            if (arr.length === 0) return [[]];
+            if (arr.length === 0)
+                return [[]];
             for (let i = 0; i < arr.length; i++) {
                 const currentElement = arr[i];
                 const remainingElements = arr.slice(0, i).concat(arr.slice(i + 1));
@@ -535,6 +536,7 @@
         function generateJurisdictionKey(jurisdictionNames) {
             console.log("Jurisdiction Names:", jurisdictionNames);
             const permutations = permute(jurisdictionNames);
+
             for (const permutation of permutations) {
                 const key = permutation.join(", ");
                 if (jurisdictionCodes[key]) {
@@ -544,6 +546,7 @@
                     };
                 }
             }
+
             console.log("No matching key found in jurisdictionCodes.");
             console.log("Generated permutations:", permutations);
             return {
@@ -559,14 +562,14 @@
             "esri/renderers/UniqueValueRenderer", 
             "esri/symbols/SimpleFillSymbol"
         ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol) {
-            const pastelColors = {};
+            var pastelColors = {};
 
-            const map = new Map({
+            var map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
             });
 
-            const view = new MapView({
+            var view = new MapView({
                 container: "viewDiv",
                 map: map,
                 center: [-105.7821, 39.550051],
@@ -580,25 +583,25 @@
                 return `rgba(${r}, ${g}, ${b}, 0.7)`;
             }
 
-            const featureLayer = new FeatureLayer({
+            var featureLayer = new FeatureLayer({
                 url: "https://services3.arcgis.com/DgjqnJA1rgO92Soi/arcgis/rest/services/Q1_2024_Web_Map_WFL1/FeatureServer",
                 outFields: ["*"],
                 orderBy: [{
                     field: "Shape_Size",
-                    order: "descending"
+                    order: "desc"
                 }]
             });
 
             featureLayer.load().then(function() {
                 featureLayer.queryFeatures().then(function(results) {
                     results.features.forEach(function(feature) {
-                        const jurisdictionName = feature.attributes.Jurisdiction_Name;
+                        var jurisdictionName = feature.attributes.Jurisdiction_Name;
                         if (!pastelColors[jurisdictionName]) {
                             pastelColors[jurisdictionName] = getRandomPastelColor();
                         }
                     });
 
-                    const renderer = new UniqueValueRenderer({
+                    var renderer = new UniqueValueRenderer({
                         field: "Jurisdiction_Name",
                         uniqueValueInfos: Object.keys(pastelColors).map(function(key) {
                             return {
@@ -621,57 +624,63 @@
 
             let isProcessingClick = false;
 
-            const cloudFunctionUrl = 'https://index-html-red-one.vercel.app/';
-
             async function handleMapClick(event) {
-                if (isProcessingClick) return;
+                if (isProcessingClick)
+                    return;
                 isProcessingClick = true;
 
                 try {
                     const response = await view.hitTest(event.screenPoint);
-                    const results = response.results.filter(result => result.graphic.layer === featureLayer);
+                    const results = response.results.filter(function(result) {
+                        return result.graphic.layer === featureLayer;
+                    });
 
                     if (results.length > 0) {
-                        let content = results.map(result => {
-                            const attributes = result.graphic.attributes;
-                            return `<b>Name:</b> ${attributes.Jurisdiction_Name || "N/A"}<br><b>Tax Rate:</b> ${(attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) : "N/A")}%`;
+                        var jurisdictionNames = results.map(result => result.graphic.attributes.Jurisdiction_Name);
+                        console.log("Jurisdiction Names from results:", jurisdictionNames);
+
+                        var content = results.map(function(result) {
+                            var attributes = result.graphic.attributes;
+                            return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
                         }).join("<hr>");
 
-                        const totalTaxRate = results.reduce((sum, result) => {
-                            const taxRate = result.graphic.attributes.Tax_Rate;
+                        var totalTaxRate = results.reduce(function(sum, result) {
+                            var taxRate = result.graphic.attributes.Tax_Rate;
                             return sum + (taxRate !== undefined ? taxRate * 100 : 0);
                         }, 0).toFixed(2);
 
-                        const lat = event.mapPoint.latitude;
-                        const lng = event.mapPoint.longitude;
+                        var jurisdiction = generateJurisdictionKey(jurisdictionNames);
+                        console.log("Jurisdiction:", jurisdiction);
 
-                        const geocodeResponse = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
-                        if (!geocodeResponse.ok) {
-                            throw new Error('Network response was not ok');
-                        }
+                        var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
+                        var geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({
+                            'location': latlng
+                        }, function(geocodeResults, status) {
+                            if (status === 'OK' && geocodeResults[0]) {
+                                var address = geocodeResults[0].formatted_address;
+                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
 
-                        const geocodeData = await geocodeResponse.json();
-                        if (typeof geocodeData !== 'object') {
-                            throw new Error('Invalid JSON response');
-                        }
+                                console.log("Popup Content:", content);
 
-                        const address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content,
+                                    location: event.mapPoint
+                                });
+                            } else {
+                                console.log("Popup Content:", content);
 
-                        content += `<hr><b>Total Tax Rate:</b> ${totalTaxRate}%<br><b>Address:</b> ${address}<br><b>Coordinates:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
-                        view.popup.open({
-                            title: "Tax Rates Information",
-                            content: content,
-                            location: event.mapPoint
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
+                                    location: event.mapPoint
+                                });
+                            }
                         });
                     }
                 } catch (error) {
-                    console.error("Error fetching geocode data:", error);
-                    view.popup.open({
-                        title: "Tax Rates Information",
-                        content: `<b>Error fetching geocode data:</b> ${error.message}`,
-                        location: event.mapPoint
-                    });
+                    console.error('Error handling map click:', error);
                 } finally {
                     isProcessingClick = false;
                 }
