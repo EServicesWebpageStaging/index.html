@@ -565,8 +565,9 @@
             "esri/views/MapView", 
             "esri/layers/FeatureLayer", 
             "esri/renderers/UniqueValueRenderer", 
-            "esri/symbols/SimpleFillSymbol"
-        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol) {
+            "esri/symbols/SimpleFillSymbol", 
+            "esri/Color"
+        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
             var pastelColors = {};
 
             var map = new Map({
@@ -624,9 +625,6 @@
 
                     featureLayer.renderer = renderer;
                     map.add(featureLayer);
-
-                    // Enable click handling after features are loaded
-                    view.on("click", handleMapClick);
                 });
             });
 
@@ -686,20 +684,15 @@
                                 });
                             }
                         });
-                    } else {
-                        console.log('No results found');
                     }
                 } catch (error) {
                     console.error('Error handling map click:', error);
-                    view.popup.open({
-                        title: "Tax Rates Information",
-                        content: `<b>Error fetching geocode data:</b> ${error.message}`,
-                        location: event.mapPoint
-                    });
                 } finally {
                     isProcessingClick = false;
                 }
             }
+
+            view.on("click", handleMapClick);
         });
     </script>
 </body>
