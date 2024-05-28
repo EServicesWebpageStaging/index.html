@@ -552,14 +552,13 @@
             };
         }
 
-        require([
+       require([
             "esri/Map", 
             "esri/views/MapView", 
             "esri/layers/FeatureLayer", 
             "esri/renderers/UniqueValueRenderer", 
-            "esri/symbols/SimpleFillSymbol", 
-            "esri/Color"
-        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
+            "esri/symbols/SimpleFillSymbol"
+        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol) {
             var pastelColors = {};
 
             var map = new Map({
@@ -629,70 +628,38 @@
                     return;
                 isProcessingClick = true;
 
-                try {
-                    const response = await view.hitTest(event.screenPoint);
-                    const results = response.results.filter(function(result) {
-                        return result.graphic.layer === featureLayer;
+                const response = await view.hitTest(event.screenPoint);
+                const results = response.results.filter(function(result) {
+                    return result.graphic.layer === featureLayer;
+                });
+
+                if (results.length > 0) {
+                    var content = results.map(function(result) {
+                        var attributes = result.graphic.attributes;
+                        return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
+                    }).join("<hr>");
+
+                    var totalTaxRate = results.reduce(function(sum, result) {
+                        var taxRate = result.graphic.attributes.Tax_Rate;
+                        return sum + (taxRate !== undefined ? taxRate * 100 : 0);
+                    }, 0).toFixed(2);
+
+                    var lat = event.mapPoint.latitude;
+                    var lng = event.mapPoint.longitude;
+
+                    const geocodeResponse = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
+                    const geocodeData = await geocodeResponse.json();
+
+                    var address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
+                    
+                    content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5);
+
+                    view.popup.open({
+                        title: "Tax Rates Information",
+                        content: content,
+                        location: event.mapPoint
                     });
 
-                    if (results.length > 0) {
-                        var jurisdictionNames = results.map(result => result.graphic.attributes.Jurisdiction_Name);
-                        console.log("Jurisdiction Names from results:", jurisdictionNames);
-
-                        var content = results.map(function(result) {
-                            var attributes = result.graphic.attributes;
-                            return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
-                        }).join("<hr>");
-
-                        var totalTaxRate = results.reduce(function(sum, result) {
-                            var taxRate = result.graphic.attributes.Tax_Rate;
-                            return sum + (taxRate !== undefined ? taxRate * 100 : 0);
-                        }, 0).toFixed(2);
-
-                        var lat = event.mapPoint.latitude;
-                        var lng = event.mapPoint.longitude;
-                        
-                        try {
-                            const response = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
-                            const responseBody = await response.text();
-                            console.log("Geocode response body:", responseBody);
-
-                            if (response.ok && response.headers.get('content-type').includes('application/json')) {
-                                const geocodeData = JSON.parse(responseBody);
-                                if (geocodeData.results && geocodeData.results[0]) {
-                                    var address = geocodeData.results[0].formatted_address;
-                                    content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5);
-
-                                    view.popup.open({
-                                        title: "Tax Rates Information",
-                                        content: content,
-                                        location: event.mapPoint
-                                    });
-                                } else {
-                                    view.popup.open({
-                                        title: "Tax Rates Information",
-                                        content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5),
-                                        location: event.mapPoint
-                                    });
-                                }
-                            } else {
-                                throw new Error("Invalid content-type");
-                            }
-                        } catch (error) {
-                            console.error("Error fetching geocode data:", error);
-                            view.popup.open({
-                                title: "Tax Rates Information",
-                                content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5) + "<br>" + "<b>Error:</b> Failed to fetch address data",
-                                location: event.mapPoint
-                            });
-                        } finally {
-                            isProcessingClick = false;
-                        }
-                    } else {
-                        isProcessingClick = false;
-                    }
-                } catch (error) {
-                    console.error("Error handling map click:", error);
                     isProcessingClick = false;
                 }
             }
