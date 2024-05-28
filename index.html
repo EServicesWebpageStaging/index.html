@@ -552,21 +552,21 @@
             };
         }
 
-       require([
+        require([
             "esri/Map", 
             "esri/views/MapView", 
             "esri/layers/FeatureLayer", 
             "esri/renderers/UniqueValueRenderer", 
             "esri/symbols/SimpleFillSymbol"
         ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol) {
-            var pastelColors = {};
+            const pastelColors = {};
 
-            var map = new Map({
+            const map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
             });
 
-            var view = new MapView({
+            const view = new MapView({
                 container: "viewDiv",
                 map: map,
                 center: [-105.7821, 39.550051],
@@ -580,7 +580,7 @@
                 return `rgba(${r}, ${g}, ${b}, 0.7)`;
             }
 
-            var featureLayer = new FeatureLayer({
+            const featureLayer = new FeatureLayer({
                 url: "https://services3.arcgis.com/DgjqnJA1rgO92Soi/arcgis/rest/services/Q1_2024_Web_Map_WFL1/FeatureServer",
                 outFields: ["*"],
                 orderBy: [{
@@ -592,13 +592,13 @@
             featureLayer.load().then(function() {
                 featureLayer.queryFeatures().then(function(results) {
                     results.features.forEach(function(feature) {
-                        var jurisdictionName = feature.attributes.Jurisdiction_Name;
+                        const jurisdictionName = feature.attributes.Jurisdiction_Name;
                         if (!pastelColors[jurisdictionName]) {
                             pastelColors[jurisdictionName] = getRandomPastelColor();
                         }
                     });
 
-                    var renderer = new UniqueValueRenderer({
+                    const renderer = new UniqueValueRenderer({
                         field: "Jurisdiction_Name",
                         uniqueValueInfos: Object.keys(pastelColors).map(function(key) {
                             return {
@@ -621,38 +621,35 @@
 
             let isProcessingClick = false;
 
-            const cloudFunctionUrl = 'https://index-html-red-one.vercel.app/'; // Replaced with your actual Cloud Function URL
+            const cloudFunctionUrl = 'https://index-html-red-one.vercel.app/';
 
             async function handleMapClick(event) {
-                if (isProcessingClick)
-                    return;
+                if (isProcessingClick) return;
                 isProcessingClick = true;
 
                 const response = await view.hitTest(event.screenPoint);
-                const results = response.results.filter(function(result) {
-                    return result.graphic.layer === featureLayer;
-                });
+                const results = response.results.filter(result => result.graphic.layer === featureLayer);
 
                 if (results.length > 0) {
-                    var content = results.map(function(result) {
-                        var attributes = result.graphic.attributes;
-                        return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
+                    let content = results.map(result => {
+                        const attributes = result.graphic.attributes;
+                        return `<b>Name:</b> ${attributes.Jurisdiction_Name || "N/A"}<br><b>Tax Rate:</b> ${(attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) : "N/A")}%`;
                     }).join("<hr>");
 
-                    var totalTaxRate = results.reduce(function(sum, result) {
-                        var taxRate = result.graphic.attributes.Tax_Rate;
+                    const totalTaxRate = results.reduce((sum, result) => {
+                        const taxRate = result.graphic.attributes.Tax_Rate;
                         return sum + (taxRate !== undefined ? taxRate * 100 : 0);
                     }, 0).toFixed(2);
 
-                    var lat = event.mapPoint.latitude;
-                    var lng = event.mapPoint.longitude;
+                    const lat = event.mapPoint.latitude;
+                    const lng = event.mapPoint.longitude;
 
                     const geocodeResponse = await fetch(`${cloudFunctionUrl}?lat=${lat}&lng=${lng}`);
                     const geocodeData = await geocodeResponse.json();
 
-                    var address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
-                    
-                    content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + lat.toFixed(5) + ", " + lng.toFixed(5);
+                    const address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
+
+                    content += `<hr><b>Total Tax Rate:</b> ${totalTaxRate}%<br><b>Address:</b> ${address}<br><b>Coordinates:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
                     view.popup.open({
                         title: "Tax Rates Information",
