@@ -6,6 +6,10 @@
     <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css">
     <script src="https://js.arcgis.com/4.24/"></script>
+    <script>
+        var googleMapsApiKey = 'AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo'; // Replace with your actual API key
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAP9xnuoVGLTVvAvaigzK8gDDRi4ClyXJo"></script>
     <style>
         html, body {
             padding: 0;
@@ -67,6 +71,7 @@
         // Dictionary for Jurisdictions and Codes
         var jurisdictionCodes = {
     "Colorado (State), Denver City and County (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "01-0006",
+    "Colorado (State), Pueblo (County)":"02-0206",
     "Colorado (State), Pueblo (County), Boone (City)": "02-0006",
     "Colorado (State), Pueblo (County), Pueblo (City)": "02-0043",
     "Colorado (State), Pueblo (County), Pueblo (City), Pueblo PIF (District)": "02-0048",
@@ -406,7 +411,7 @@
     "Colorado (State), Eagle (County), Eagle County MTS (District), Eagle-Vail MDT (District)": "44-0068",
     "Colorado (State), Eagle (County), Eagle County MTS (District), Arrowhead MDT (District)": "44-0069",
     "Colorado (State), Eagle (County), Eagle County MTS (District), Edwards MDT (District), Arrowhead MDT (District)": "44-0070",
-    "Colorado (State), Eagle (County), Eagle County MTS (District), Eagle Valley RTA (District)": "44-0206",
+    "Colorado (State), Eagle (County), Eagle County MTS (District)": "44-0206",
     "Colorado (State), Eagle (County), Eagle County MTS (District), Roaring Fork RTA Unincorporated Eagle Co (District)": "44-0208",
     "Colorado (State), Kiowa (County), Eads (City)": "45-0006",
     "Colorado (State), Kiowa (County), Haswell (City)": "45-0009",
@@ -518,7 +523,7 @@
     "Colorado (State), Broomfield, City and County (County), Scientific and Cultural Facilities District (CD) (District)": "64-0005"
       };
       
-     function permute(arr) {
+      function permute(arr) {
             let result = [];
             if (arr.length === 0)
                 return [[]];
@@ -560,8 +565,9 @@
             "esri/views/MapView", 
             "esri/layers/FeatureLayer", 
             "esri/renderers/UniqueValueRenderer", 
-            "esri/symbols/SimpleFillSymbol"
-        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol) {
+            "esri/symbols/SimpleFillSymbol", 
+            "esri/Color"
+        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
             var pastelColors = {};
 
             var map = new Map({
@@ -652,39 +658,35 @@
                         var jurisdiction = generateJurisdictionKey(jurisdictionNames);
                         console.log("Jurisdiction:", jurisdiction);
 
-                        const lat = event.mapPoint.latitude;
-                        const lng = event.mapPoint.longitude;
+                        var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
+                        var geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({
+                            'location': latlng
+                        }, function(geocodeResults, status) {
+                            if (status === 'OK' && geocodeResults[0]) {
+                                var address = geocodeResults[0].formatted_address;
+                                content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
 
-                        const geocodeResponse = await fetch(`https://index-html-red-one.vercel.app/?lat=${lat}&lng=${lng}`);
-                        if (!geocodeResponse.ok) {
-                            throw new Error('Network response was not ok');
-                        }
+                                console.log("Popup Content:", content);
 
-                        const contentType = geocodeResponse.headers.get("content-type");
-                        if (!contentType || !contentType.includes("application/json")) {
-                            throw new TypeError("Expected JSON response");
-                        }
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content,
+                                    location: event.mapPoint
+                                });
+                            } else {
+                                console.log("Popup Content:", content);
 
-                        const geocodeData = await geocodeResponse.json();
-                        const address = (geocodeData.results && geocodeData.results[0]) ? geocodeData.results[0].formatted_address : "N/A";
-
-                        content += `<hr><b>Total Tax Rate:</b> ${totalTaxRate}%<br><b>Address:</b> ${address}<br><b>Coordinates:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}<br><b>Jurisdiction Code:</b> ${jurisdiction.code}`;
-
-                        console.log("Popup Content:", content);
-
-                        view.popup.open({
-                            title: "Tax Rates Information",
-                            content: content,
-                            location: event.mapPoint
+                                view.popup.open({
+                                    title: "Tax Rates Information",
+                                    content: content + "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code,
+                                    location: event.mapPoint
+                                });
+                            }
                         });
                     }
                 } catch (error) {
-                    console.error("Error fetching geocode data:", error);
-                    view.popup.open({
-                        title: "Tax Rates Information",
-                        content: `<b>Error fetching geocode data:</b> ${error.message}`,
-                        location: event.mapPoint
-                    });
+                    console.error('Error handling map click:', error);
                 } finally {
                     isProcessingClick = false;
                 }
