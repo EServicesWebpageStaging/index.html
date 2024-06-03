@@ -19,43 +19,38 @@
             font-family: "Roboto", sans-serif;
             background-color: #000000;
         }
-        #viewDiv {  
+        #viewDiv {
             height: 100%;
             width: 100%;
-        }
-        .esri-popup .esri-popup__main-container {
-            border: none;
-            border-top: 3px solid #0e0a69;
-            margin: 8px 0;
-            max-height: fit-content;
-            max-width: fit-content;
-        }
-        .esri-popup .esri-popup__main-container .esri-widget {
-            font-size: 20px;
-        }
-        .esri-popup .esri-popup__main-container .jurisdiction-name,
-        .esri-popup .esri-popup__main-container .total-tax-rate,
-        .esri-popup .esri-popup__main-container .tax-rate {
-            font-size: 14px;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         #header {
             display: flex;
             align-items: center;
-            justify-content: start;
+            justify-content: space-between;
+            padding: 5px 10px;
             color: #000000;
             background-color: #fff;
         }
         #logo {
-            max-width: 300px;
-            margin: 1px;
+            max-width: 200px;
             height: auto;
         }
         #disclaimer {
-            margin-left: 20px;
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+        }
+        #searchDiv, #uploadDiv {
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+        }
+        #searchDiv input {
+            width: 200px;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -64,6 +59,17 @@
         <img src="https://i.imgur.com/wXfIbKD.jpeg" alt="Colorado Department of Revenue - Division of Taxation" id="logo" />
         <div id="disclaimer">
             Please click anywhere on the map of Colorado to display the sales tax information about that location.
+            Alternatively, you may enter a physical address in the search bar, or you may upload a spreadhsheet of addresses based on the template provided here.
+        </div>
+        <div id="controls">
+            <div id="searchDiv">
+                <input type="text" id="addressInput" placeholder="Enter an address">
+                <button id="searchButton">Search</button>
+            </div>
+            <div id="uploadDiv">
+                <input type="file" id="fileInput">
+                <button id="uploadButton">Upload</button>
+            </div>
         </div>
     </div>
     <div id="viewDiv"></div>
@@ -522,6 +528,7 @@
     "Colorado (State), Broomfield, City and County (County), Regional Transportation District (RTD) (District), Scientific and Cultural Facilities District (CD) (District)": "64-0001",
     "Colorado (State), Broomfield, City and County (County), Scientific and Cultural Facilities District (CD) (District)": "64-0005"
       };
+      var pastelColors = {};
       
       function permute(arr) {
             let result = [];
@@ -568,8 +575,6 @@
             "esri/symbols/SimpleFillSymbol", 
             "esri/Color"
         ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
-            var pastelColors = {};
-
             var map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
@@ -578,8 +583,22 @@
             var view = new MapView({
                 container: "viewDiv",
                 map: map,
-                center: [-105.7821, 39.550051],
-                zoom: 7
+                center: [-105.7821, 38.5000],  // Center the map on Colorado
+                zoom: 7,
+                constraints: {
+                    snapToZoom: false
+                }
+            });
+
+            view.when(() => {
+                const extent = view.extent.clone();
+                view.extent = extent;
+                view.goTo({ extent });
+            });
+
+            window.addEventListener('resize', function() {
+                view.extent = view.extent;
+                view.goTo({ extent: view.extent });
             });
 
             function getRandomPastelColor() {
@@ -588,14 +607,10 @@
                 const b = Math.round((Math.random() * 127) + 127);
                 return `rgba(${r}, ${g}, ${b}, 0.7)`;
             }
-
             var featureLayer = new FeatureLayer({
                 url: "https://services3.arcgis.com/DgjqnJA1rgO92Soi/arcgis/rest/services/Q1_2024_Web_Map_WFL1/FeatureServer",
                 outFields: ["*"],
-                orderBy: [{
-                    field: "Shape_Size",
-                    order: "desc"
-                }]
+                orderBy: [{ field: "Shape_Size", order: "desc" }]
             });
 
             featureLayer.load().then(function() {
@@ -614,10 +629,7 @@
                                 value: key,
                                 symbol: new SimpleFillSymbol({
                                     color: pastelColors[key],
-                                    outline: {
-                                        color: [0, 0, 0, 1],
-                                        width: 1
-                                    }
+                                    outline: { color: [0, 0, 0, 1], width: 1 }
                                 })
                             };
                         })
@@ -631,26 +643,23 @@
             let isProcessingClick = false;
 
             async function handleMapClick(event) {
-                if (isProcessingClick)
-                    return;
+                if (isProcessingClick) return;
                 isProcessingClick = true;
 
                 try {
                     const response = await view.hitTest(event.screenPoint);
-                    const results = response.results.filter(function(result) {
-                        return result.graphic.layer === featureLayer;
-                    });
+                    const results = response.results.filter(result => result.graphic.layer === featureLayer);
 
                     if (results.length > 0) {
                         var jurisdictionNames = results.map(result => result.graphic.attributes.Jurisdiction_Name);
                         console.log("Jurisdiction Names from results:", jurisdictionNames);
 
-                        var content = results.map(function(result) {
+                        var content = results.map(result => {
                             var attributes = result.graphic.attributes;
                             return "<b>Name:</b> " + (attributes.Jurisdiction_Name || "N/A") + "<br>" + "<b>Tax Rate:</b> " + (attributes.Tax_Rate !== undefined ? (attributes.Tax_Rate * 100).toFixed(2) + "%" : "N/A");
                         }).join("<hr>");
 
-                        var totalTaxRate = results.reduce(function(sum, result) {
+                        var totalTaxRate = results.reduce((sum, result) => {
                             var taxRate = result.graphic.attributes.Tax_Rate;
                             return sum + (taxRate !== undefined ? taxRate * 100 : 0);
                         }, 0).toFixed(2);
@@ -660,9 +669,7 @@
 
                         var latlng = new google.maps.LatLng(event.mapPoint.latitude, event.mapPoint.longitude);
                         var geocoder = new google.maps.Geocoder();
-                        geocoder.geocode({
-                            'location': latlng
-                        }, function(geocodeResults, status) {
+                        geocoder.geocode({ 'location': latlng }, function(geocodeResults, status) {
                             if (status === 'OK' && geocodeResults[0]) {
                                 var address = geocodeResults[0].formatted_address;
                                 content += "<hr><b>Total Tax Rate:</b> " + totalTaxRate + "%<br>" + "<b>Address:</b> " + address + "<br>" + "<b>Coordinates:</b> " + event.mapPoint.latitude.toFixed(5) + ", " + event.mapPoint.longitude.toFixed(5) + "<br>" + "<b>Jurisdiction Code:</b> " + jurisdiction.code;
@@ -693,6 +700,84 @@
             }
 
             view.on("click", handleMapClick);
+
+            var searchWidget = new Search({
+                view: view,
+                container: "searchDiv"
+            });
+
+            searchWidget.on("select-result", function(event) {
+                console.log("Search result selected:", event);
+
+                var location = event.result.feature.geometry;
+                view.goTo({
+                    center: location,
+                    zoom: 15
+                }).then(function() {
+                    view.popup.open({
+                        title: "Search Result",
+                        content: "Address: " + event.result.name,
+                        location: location
+                    });
+                });
+            });
+
+            document.getElementById("searchButton").addEventListener("click", function() {
+                var address = document.getElementById("addressInput").value;
+                if (!address) return;
+
+                var geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ 'address': address }, function(results, status) {
+                    if (status === 'OK' && results[0]) {
+                        var location = results[0].geometry.location;
+                        view.goTo({
+                            center: [location.lng(), location.lat()],
+                            zoom: 15
+                        }).then(function() {
+                            view.popup.open({
+                                title: "Search Result",
+                                content: "Address: " + address,
+                                location: { latitude: location.lat(), longitude: location.lng() }
+                            });
+                        });
+                    } else {
+                        alert("Geocode was not successful for the following reason: " + status);
+                    }
+                });
+            });
+
+            document.getElementById("uploadButton").addEventListener("click", function() {
+                var fileInput = document.getElementById("fileInput");
+                if (fileInput.files.length === 0) return;
+
+                var file = fileInput.files[0];
+                var reader = new FileReader();
+
+                reader.onload = function(e) {
+                    var content = e.target.result;
+                    processUploadedData(content);
+                };
+
+                reader.readAsText(file);
+            });
+
+            function processUploadedData(data) {
+                var addresses = data.split(/\r?\n/);
+                var geocoder = new google.maps.Geocoder();
+
+                addresses.forEach(function(address, index) {
+                    geocoder.geocode({ 'address': address }, function(results, status) {
+                        if (status === 'OK' && results[0]) {
+                            var location = results[0].geometry.location;
+                            console.log("Geocoded address:", address, "Location:", location.lat(), location.lng());
+
+                            // Handle the location data as needed for the jurisdiction code lookup
+                        } else {
+                            console.error("Geocode was not successful for address:", address, "Reason:", status);
+                        }
+                    });
+                });
+            }
         });
     </script>
 </body>
