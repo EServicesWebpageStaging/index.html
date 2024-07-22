@@ -597,14 +597,15 @@
             };
         }
 
-        require([
-            "esri/Map", 
-            "esri/views/MapView", 
-            "esri/layers/FeatureLayer", 
-            "esri/renderers/UniqueValueRenderer", 
-            "esri/symbols/SimpleFillSymbol", 
-            "esri/Color"
-        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color) {
+         require([
+        "esri/Map", 
+        "esri/views/MapView", 
+        "esri/layers/FeatureLayer", 
+        "esri/renderers/UniqueValueRenderer", 
+        "esri/symbols/SimpleFillSymbol", 
+        "esri/Color",
+        "esri/widgets/Search" // Add this line to include the Search widget
+    ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color, Search) { // Add Search to the function parameters
             var map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
