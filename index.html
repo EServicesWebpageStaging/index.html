@@ -560,7 +560,7 @@
       };
       var pastelColors = {};
       
-      function permute(arr) {
+        function permute(arr) {
             let result = [];
             if (arr.length === 0)
                 return [[]];
@@ -597,15 +597,15 @@
             };
         }
 
-         require([
-        "esri/Map", 
-        "esri/views/MapView", 
-        "esri/layers/FeatureLayer", 
-        "esri/renderers/UniqueValueRenderer", 
-        "esri/symbols/SimpleFillSymbol", 
-        "esri/Color",
-        "esri/widgets/Search" // Add this line to include the Search widget
-    ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color, Search) { // Add Search to the function parameters
+        require([
+            "esri/Map", 
+            "esri/views/MapView", 
+            "esri/layers/FeatureLayer", 
+            "esri/renderers/UniqueValueRenderer", 
+            "esri/symbols/SimpleFillSymbol", 
+            "esri/Color",
+            "esri/widgets/Search" // Add this line to include the Search widget
+        ], function(Map, MapView, FeatureLayer, UniqueValueRenderer, SimpleFillSymbol, Color, Search) { // Add Search to the function parameters
             var map = new Map({
                 basemap: "hybrid",
                 ground: "world-elevation"
@@ -638,6 +638,8 @@
                 const b = Math.round((Math.random() * 127) + 127);
                 return `rgba(${r}, ${g}, ${b}, 0.7)`;
             }
+
+            // Feature Layer URL (Ensure this URL is correct)
             var featureLayer = new FeatureLayer({
                 url: "https://services3.arcgis.com/DgjqnJA1rgO92Soi/arcgis/rest/services/Q1_2024_Web_Map_WFL1/FeatureServer",
                 outFields: ["*"],
@@ -668,7 +670,11 @@
 
                     featureLayer.renderer = renderer;
                     map.add(featureLayer);
+                }).catch(function(error) {
+                    console.error("Error querying features: ", error);
                 });
+            }).catch(function(error) {
+                console.error("Error loading feature layer: ", error);
             });
 
             let isProcessingClick = false;
@@ -722,6 +728,8 @@
                                 });
                             }
                         });
+                    } else {
+                        console.log("No features found at clicked location.");
                     }
                 } catch (error) {
                     console.error('Error handling map click:', error);
@@ -733,9 +741,9 @@
             view.on("click", handleMapClick);
 
             var searchWidget = new Search({
-    view: view,
-    container: "searchDiv"
-});
+                view: view,
+                container: "searchDiv"
+            });
 
             searchWidget.on("select-result", function(event) {
                 console.log("Search result selected:", event);
